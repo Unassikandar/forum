@@ -19,6 +19,7 @@ app.use('/graphql', graphqlHttp({
 // server
 app.use(express.static('./src/client', {root: "."}));
 app.use(express.static('build/contracts'));
+
 app.get('/', (req, res) => {
     res.sendFile(`./src/client/index.html`, {root: "."});
   });
@@ -29,13 +30,13 @@ app.get('/', (req, res) => {
   });
  
   app.listen(8000, () => {
-    console.log(`Ethereum HelloWorld App running on port :3000...`);
+    console.log(`Listening on :8000...`);
   });
 
 // connect to the mongoDB database
 mongoose
     .connect(
-        `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@cluster0-3zksz.mongodb.net/test?retryWrites=true&w=majority`
+        `mongodb+srv://unassikandar:D9vONiEmuO0ijbhK@cluster0-3zksz.mongodb.net/test?retryWrites=true&w=majority`
     ).then(() => {
         app.listen(8080);
     }).catch(err => {
