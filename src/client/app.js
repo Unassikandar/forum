@@ -1,11 +1,7 @@
-// const Web3 = require('web3');
-// const TruffleContract = require("truffle-contract");
-
 App = {
     web3Provider: null,
     contracts: {},
     account: '0x0',
-    accounts: null,
     tokensAvailable: 1000000,
 
     init: function() {
@@ -59,27 +55,22 @@ App = {
             }
         })
 
-        web3.eth.getAccounts((err, acc) => { 
-            if(err === null){
-                App.accounts = acc;
-                console.log("Accounts: " + acc);
-            } else {
-                console.log("Error fetching accounts");
-            }
-        })
-
         App.contracts.ArgetherToken.deployed().then(function(instance) {
             argetherToken = instance;
-            return argetherToken.totalSupply();
+            return argetherToken.balanceOf(App.account);
+            // return argetherToken.totalSupply();
         }).then(function(supply) {
             console.log("token supply: ", supply);
             $('#output').html(supply.toNumber());
             $('#output').show();
         });
+        
+        
 
         const button = document.getElementById('transfer');
         button.addEventListener('click', function(e) {
             console.log('button was clicked');
+            pos.fetchEvents();
         });
 
     }
