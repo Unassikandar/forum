@@ -28,8 +28,16 @@ App = {
             App.contracts.ArgetherToken.deployed().then(function(argetherToken) {
                 console.log("ArgetherToken address: ", argetherToken.address);
             });
-            App.listenForEvents();
-            return App.render();
+        }).done(function() {
+            $.getJSON("Forum.json", function(forum) {
+                App.contracts.Forum = TruffleContract(forum);
+                App.contracts.Forum.setProvider(App.web3Provider);
+                App.contracts.Forum.deployed().then(function(forum) {
+                    console.log("Forum contract address: ", forum.address);
+                });
+                App.listenForEvents();
+                return App.render();
+            });
         });
     },
 
@@ -71,12 +79,13 @@ App = {
         const button = document.getElementById('transfer');
         button.addEventListener('click', function(e) {
             console.log('button was clicked');
-            // pos.fetchPosts();
-            // pos.addPost({disId: "5d83411a1f5c5138f9a0a73b", parId: "0", owner: "0x00", content: "xxxxxx"});
+            pos.fetchPosts();
             pos.addPost("5d83411a1f5c5138f9a0a73b", "0", "0x00", "xxxxxx");
-
+            App.contracts.Forum.deployed().then(function(instance) {
+                forum = instance;
+                return forum.addPost("5d83411a1f5c5138f9a0a73b", "1", "0", 10);
+            })
         });
-
     }
 }
 
