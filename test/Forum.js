@@ -44,10 +44,12 @@ contract('Forum', function(accounts) {
             return forumInstance.minBidOf("1");
         }).then(minBid => {
             assert.equal(minBid, 10, "minimum bid should be 10");
-            return forumInstance.userPosts(accounts[0], 0);
-        }).then(post => {
-            assert.equal(post.postId, "1", 'postId should be 1');
-            assert.equal(post.bid, 10, 'bid should be 10');
+            return forumInstance.postIdsOf("1", 0);
+        }).then(idArray => {
+            assert.equal(idArray, "1", "discussion should contain 1 postId");
+            return forumInstance.getDiscussionPostCount("1");
+        }).then(postCount => {
+            assert.equal(postCount, 1, "postCount should be 1");
         });
     });
 
@@ -57,7 +59,7 @@ contract('Forum', function(accounts) {
             return Forum.deployed()
         }).then(function(instance) {
             forumInstance = instance;
-            return forumInstance.poolOf("1")
+            return forumInstance.poolOf("1");
         }).then(pool => {
             assert.equal(pool, 10, 'checking pool value');
             return tokenInstance.approve(forumAddress, 5, {from:accounts[0]});
@@ -69,20 +71,75 @@ contract('Forum', function(accounts) {
             assert.equal(receipt.logs[0].args._value, 5, 'approved amount is 5');
             return forumInstance.upvote("2", "1", {from: accounts[0], value: 5*tokenPrice});
         }).then(assert.fail).catch(error => {
-            assert(error.message.indexOf('revert') >= 0, 'error should be a revert');
+            assert(error.message.indexOf('revert') >= 0, 'should revert because of false discussionId');
             return forumInstance.upvote("1", "1", {from: accounts[0], value: 4*tokenPrice});
         }).then(assert.fail).catch(error => {
             assert(error.message.indexOf('revert') >= 0, 'should revert because bid cost is false');
-            return forumInstance.upvote("1", "1", {from: accounts[0], value: 5*tokenPrice});
+            return forumInstance.upvote("1", "1", {from: accounts[0], value: 1*tokenPrice});
         }).then(receipt => {
             assert.equal(receipt.logs.length, 1, 'should trigger one event');
             assert.equal(receipt.logs[0].event, "Vote", 'should be a vote event');
-            return forumInstance.votesOf(accounts[0], "1");
-        }).then(vote => {
-            assert.equal(vote.toNumber(), 1 , 'votes of post should be 1');
-            return forumInstance.upvote("1", "1", {from: accounts[0], value: 5*tokenPrice});
-        }).then(assert.fail).catch(error => {
-            assert(error.message.indexOf('revert') >= 0, 'should revert because cannot upvote twice');
+            assert.equal(receipt.logs[0].args._user, accounts[0], "voter should be accounts[0]");
+            assert.equal(receipt.logs[0].args._postId, "1", 'postId should be 1');
+            return forumInstance.votersOf("1", 0);
+        }).then(voter => {
+            assert.equal(voter, accounts[0], 'voter should be 0th account');
+            return forumInstance.poolOf("1");
+        }).then(pool => {
+            assert.equal(pool, 11, 'pool should be 11');
         });
     });
+
+    it('can execute reward distribution', async () => {
+        let tokenInstance = await ArgetherToken.deployed();
+        let forumInstance = await Forum.deployed();
+        /**
+         * Reward distribution metrics:
+         * distribute tokens to 5 accounts
+         * accounts 2 and 3 make posts
+         * all 5 accounts make votes
+         * 2, 3 and 4 vote for post 1
+         * 5, 6 vote for post 2
+         */
+
+        // transferring tokens to accounts
+        await tokenInstance.transfer(accounts[1], 50);
+        await tokenInstance.transfer(accounts[2], 50);
+        await tokenInstance.transfer(accounts[3], 50);
+        await tokenInstance.transfer(accounts[4], 50);
+        await tokenInstance.transfer(accounts[5], 50);
+        let balance1 = await tokenInstance.balanceOf(accounts[1]);
+        assert.equal(balance1, 50, 'balance1 should be 50');
+        // accounts approve the contract for a spending of 50
+        await tokenInstance.approve(forumInstance.address, 50, {from: accounts[1]});
+        await tokenInstance.approve(forumInstance.address, 50, {from: accounts[2]});
+        await tokenInstance.approve(forumInstance.address, 50, {from: accounts[3]});
+        await tokenInstance.approve(forumInstance.address, 50, {from: accounts[4]});
+        await tokenInstance.approve(forumInstance.address, 50, {from: accounts[5]});
+        // make two posts
+        let addpost1 = await forumInstance.addPost("2", "1", "0", 10, {from:accounts[1], value:10*tokenPrice});
+        let addpost2 = await forumInstance.addPost("2", "2", "1", 10, {from:accounts[2], value:10*tokenPrice});
+        assert.equal(addpost1.logs[0].event, "NewPost", 'event should be NewPost');
+        assert.equal(addpost2.logs[0].event, "NewPost", 'event should be NewPost');
+        // upvote the posts
+        let vote1 = await forumInstance.upvote("2", "1", {from:accounts[1], value:tokenPrice});
+        let vote2 = await forumInstance.upvote("2", "1", {from:accounts[2], value:tokenPrice});
+        let vote3 = await forumInstance.upvote("2", "1", {from:accounts[3], value:tokenPrice});
+        let vote4 = await forumInstance.upvote("2", "2", {from:accounts[4], value:tokenPrice});
+        let vote5 = await forumInstance.upvote("2", "2", {from:accounts[5], value:tokenPrice});
+        assert.equal(vote3.logs[0].event, "Vote", 'should be a vote event');
+        // check discussion pool
+        let pool = await forumInstance.poolOf("2");
+        assert.equal(pool, 25, 'discussion pool should be 25');
+        // execute the reward distribution
+        let receipt = await forumInstance.distributeRewards("2");
+        assert.equal(receipt.logs.length, 1, 'should trigger one event');
+        assert.equal(receipt.logs[0].event, "Distribute", 'should be a distribute event');
+        assert.equal(receipt.logs[0].args._discussionId, "2", 'discussion id should be 2');
+        // make reward distribution tests
+        let bal1 = await tokenInstance.balanceOf(accounts[1]);
+        assert.equal(bal1.toNumber(), 49, 'balance should equal'); // Account 1 has 49
+        
+    });
+
 });
