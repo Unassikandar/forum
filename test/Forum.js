@@ -110,6 +110,9 @@ contract('Forum', function(accounts) {
         await tokenInstance.transfer(accounts[5], 50);
         let balance1 = await tokenInstance.balanceOf(accounts[1]);
         assert.equal(balance1, 50, 'balance1 should be 50');
+        // check admin account
+        let adminBalanceInitial = await tokenInstance.balanceOf(accounts[0]);
+        assert.equal(adminBalanceInitial.toNumber(), 999739, 'admin balance is 999739');
         // accounts approve the contract for a spending of 50
         await tokenInstance.approve(forumInstance.address, 50, {from: accounts[1]});
         await tokenInstance.approve(forumInstance.address, 50, {from: accounts[2]});
@@ -138,8 +141,17 @@ contract('Forum', function(accounts) {
         assert.equal(receipt.logs[0].args._discussionId, "2", 'discussion id should be 2');
         // make reward distribution tests
         let bal1 = await tokenInstance.balanceOf(accounts[1]);
-        assert.equal(bal1.toNumber(), 49, 'balance should equal'); // Account 1 has 49
-        
+        let bal2 = await tokenInstance.balanceOf(accounts[2]);
+        let bal3 = await tokenInstance.balanceOf(accounts[3]);
+        let bal4 = await tokenInstance.balanceOf(accounts[4]);
+        let bal5 = await tokenInstance.balanceOf(accounts[5]);
+        let adminBalancePost = await tokenInstance.balanceOf(accounts[0]);
+        assert.equal(bal1.toNumber(), 49, 'balance1 should equal'); // Account 1 has 49
+        assert.equal(bal2.toNumber(), 45, 'balance2 should equal'); // Account 2 has 45
+        assert.equal(bal3.toNumber(), 51, 'balance3 should equal'); // Account 3 has 51
+        assert.equal(bal4.toNumber(), 51, 'balance4 should equal'); // Account 4 has 51
+        assert.equal(bal5.toNumber(), 51, 'balance5 should equal'); // Account 5 has 51
+        assert.equal(adminBalancePost.toNumber(), 999741, 'admin balance should equal 999741'); // Account 5 has 51
     });
 
 });
